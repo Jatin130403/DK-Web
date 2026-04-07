@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bet History</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-gray-100 p-4">
+
+<div class="flex justify-between mb-4">
+
+<h1 class="text-xl font-bold">Last 7 Days History</h1>
+
+<button onclick="goBack()" class="bg-gray-500 text-white px-3 py-1 rounded">
+Back
+</button>
+
+</div>
+
+<div id="historyContainer" class="space-y-3"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyCMb2Trmtww1wUVGC9s4ndKd7_M06nIg9Y",
+authDomain:"dk-web-af36a.firebaseapp.com",
+projectId:"dk-web-af36a",
+storageBucket:"dk-web-af36a.appspot.com",
+messagingSenderId:"963722080614",
+appId:"1:963722080614:web:7adcb518ea9a06c33358a7",
+databaseURL:"https://dk-web-af36a-default-rtdb.firebaseio.com"
+}
+
+const app=initializeApp(firebaseConfig)
+const auth=getAuth()
+const db=getDatabase()
+
+window.goBack=function(){
+location.href="user.dashboard.html"
+}
+
+async function loadHistory(){
+
+const uid = auth.currentUser.uid
+
+const snapshot = await get(ref(db,"bets/"+uid))
+
+const container = document.getElementById("historyContainer")
+
+container.innerHTML=""
+
+if(!snapshot.exists()){
+container.innerHTML="<p>No history found</p>"
+return
+}
+
+const data = snapshot.val()
+
+const today = new Date()
+
+for(const date in data){
+
+const diffDays = (today - new Date(date)) / (1000*60*60*24)
+
+if(diffDays > 7) continue
+
+
+let html = `
+<div class="bg-white p-4 rounded shadow">
+<h2 class="font-bold text-lg mb-2">${date}</h2>
+`
+
+const companies = data[date]
+
+for(const company in companies){
+
+html += `
+<div class="border-t pt-2 mt-2">
+<h3 class="font-semibold">${company}</h3>
+`
+
+let total = 0
+
+
+if(companies[company].numbers){
+
+for(const n in companies[company].numbers){
+
+const amt = companies[company].numbers[n]
+
+html += `<div class="text-sm"> ${n} → ₹${amt}</div>`
+
+total += amt
+
+}
+
+}
+
+
+if(companies[company].A){
+
+for(const n in companies[company].A){
+
+const amt = companies[company].A[n]
+
+html += `<div class="text-sm">A-${n} → ₹${amt}</div>`
+
+total += amt
+
+}
+
+}
+
+
+if(companies[company].B){
+
+for(const n in companies[company].B){
+
+const amt = companies[company].B[n]
+
+html += `<div class="text-sm">B-${n} → ₹${amt}</div>`
+
+total += amt
+
+}
+
+}
+
+
+html += `<div class="text-sm font-semibold mt-1">Total ₹${total}</div>`
+
+html += `</div>`
+
+}
+
+html += `</div>`
+
+container.innerHTML += html
+
+}
+
+}
+
+
+auth.onAuthStateChanged(user=>{
+if(user) loadHistory()
+})
+
+</script>
+
+</body>
+</html>

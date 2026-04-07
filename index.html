@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Login</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+body{
+background:linear-gradient(135deg,#1e3a8a,#2563eb,#3b82f6);
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+font-family:sans-serif;
+}
+
+.spinner{
+border:4px solid #f3f3f3;
+border-top:4px solid #2563eb;
+border-radius:50%;
+width:22px;
+height:22px;
+animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+0%{transform:rotate(0deg)}
+100%{transform:rotate(360deg)}
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="bg-white p-8 rounded-xl shadow-xl w-96">
+
+<h2 class="text-2xl font-bold text-center mb-6">Login</h2>
+
+<input id="email" type="email" placeholder="Email"
+class="w-full border p-2 mb-4 rounded"/>
+
+<div class="relative mb-4">
+<input id="password" type="password" placeholder="Password"
+class="w-full border p-2 rounded"/>
+
+<button onclick="togglePassword()"
+class="absolute right-2 top-2 text-sm text-blue-600">
+Show
+</button>
+</div>
+
+<button id="loginBtn"
+onclick="loginUser()"
+class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 flex justify-center items-center gap-2">
+
+<span id="btnText">Login</span>
+
+<div id="spinner" class="spinner hidden"></div>
+
+</button>
+
+<p id="msg" class="text-red-500 mt-3 text-center"></p>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import { getFirestore, doc, getDoc }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+
+const firebaseConfig = {
+
+apiKey: "AIzaSyCMb2Trmtww1wUVGC9s4ndKd7_M06nIg9Y",
+authDomain: "dk-web-af36a.firebaseapp.com",
+projectId: "dk-web-af36a",
+storageBucket: "dk-web-af36a.appspot.com",
+messagingSenderId: "963722080614",
+appId: "1:963722080614:web:7adcb518ea9a06c33358a7"
+
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+
+
+/* ----------------------------- */
+/* AUTO REDIRECT IF LOGGED IN */
+/* ----------------------------- */
+
+onAuthStateChanged(auth, async (user)=>{
+
+if(user){
+
+const snap = await getDoc(doc(db,"users",user.uid));
+
+if(!snap.exists()) return;
+
+const role = snap.data().role;
+
+if(role==="admin"){
+window.location.href="admin.dashboard.html";
+}
+else{
+window.location.href="user.dashboard.html";
+}
+
+}
+
+});
+
+
+
+/* ----------------------------- */
+/* SHOW HIDE PASSWORD */
+/* ----------------------------- */
+
+window.togglePassword=function(){
+
+const pass=document.getElementById("password");
+
+if(pass.type==="password"){
+pass.type="text";
+}else{
+pass.type="password";
+}
+
+}
+
+
+
+/* ----------------------------- */
+/* LOGIN FUNCTION */
+/* ----------------------------- */
+
+window.loginUser = async function(){
+
+const email=document.getElementById("email").value;
+const password=document.getElementById("password").value;
+const msg=document.getElementById("msg");
+const spinner=document.getElementById("spinner");
+const btnText=document.getElementById("btnText");
+
+msg.innerText="";
+
+spinner.classList.remove("hidden");
+btnText.innerText="Logging in...";
+
+try{
+
+const cred = await signInWithEmailAndPassword(auth,email,password);
+
+const uid = cred.user.uid;
+
+const snap = await getDoc(doc(db,"users",uid));
+
+if(!snap.exists()){
+
+msg.innerText="User role not found";
+spinner.classList.add("hidden");
+btnText.innerText="Login";
+return;
+
+}
+
+const role = snap.data().role;
+
+if(role==="admin"){
+
+window.location.href="admin.dashboard.html";
+
+}else{
+
+window.location.href="user.dashboard.html";
+
+}
+
+}catch(error){
+
+msg.innerText=error.message;
+
+spinner.classList.add("hidden");
+btnText.innerText="Login";
+
+}
+
+}
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+</head>
+
+<body class="bg-gray-100">
+
+<div class="flex h-screen">
+
+<!-- SIDEBAR -->
+
+<div class="w-64 bg-gray-900 text-white flex flex-col">
+
+<div class="p-4 text-xl font-bold border-b border-gray-700">
+Admin Panel
+</div>
+
+<button onclick="showPage('dashboard')" class="p-4 text-left hover:bg-gray-700">Dashboard</button>
+<button onclick="showPage('users')" class="p-4 text-left hover:bg-gray-700">Users</button>
+<button onclick="showPage('bets')" class="p-4 text-left hover:bg-gray-700">Live Bets</button>
+<button onclick="showPage('collection')" class="p-4 text-left hover:bg-gray-700">Company Collection</button>
+<button onclick="showPage('results')" class="p-4 text-left hover:bg-gray-700">Declare Result</button>
+<button onclick="showPage('reports')" class="p-4 text-left hover:bg-gray-700">Reports</button>
+
+<button onclick="logout()" class="p-4 text-left hover:bg-red-600 mt-auto">
+Logout
+</button>
+
+</div>
+
+<!-- MAIN CONTENT -->
+
+<div class="flex-1 flex flex-col">
+
+<div class="bg-white shadow p-4">
+<h1 id="pageTitle" class="text-xl font-semibold">Dashboard</h1>
+</div>
+
+<div class="p-6 overflow-auto flex-1">
+
+<!-- DASHBOARD -->
+
+<div id="dashboardPage">
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+<div class="bg-white p-4 rounded shadow">
+<p>Total Users</p>
+<p id="totalUsers" class="text-2xl font-bold">0</p>
+</div>
+
+<div class="bg-white p-4 rounded shadow">
+<p>Total Wallet</p>
+<p id="walletTotal" class="text-2xl font-bold">₹0</p>
+</div>
+
+<div class="bg-white p-4 rounded shadow">
+<p>Markets</p>
+<p class="text-2xl font-bold">7</p>
+</div>
+
+</div>
+
+</div>
+
+
+<!-- USERS PAGE -->
+
+<div id="usersPage" class="hidden">
+
+<button onclick="openCreateUser()" class="bg-green-600 text-white px-3 py-2 rounded mb-3">
+Create New User
+</button>
+
+<div class="bg-white rounded shadow">
+
+<table class="w-full">
+
+<thead class="bg-gray-200">
+
+<tr>
+<th class="p-3 text-left">Name</th>
+<th class="p-3 text-center">Wallet</th>
+<th class="p-3 text-center">Commission %</th>
+<th class="p-3 text-center">Actions</th>
+</tr>
+
+</thead>
+
+<tbody id="usersTable"></tbody>
+
+</table>
+
+</div>
+
+</div>
+
+
+<!-- LIVE BETS -->
+
+<div id="betsPage" class="hidden">
+
+<div class="bg-white p-4 rounded shadow">
+
+<h2 class="text-lg font-semibold mb-3">Live Bets Monitor</h2>
+
+<div id="betsContainer"></div>
+
+</div>
+
+</div>
+
+
+<!-- COMPANY COLLECTION -->
+
+<div id="collectionPage" class="hidden">
+
+<div class="bg-white p-4 rounded shadow">
+
+<h2 class="text-lg font-semibold mb-4">Company Collection</h2>
+
+<div id="collectionContainer"></div>
+
+</div>
+
+</div>
+
+
+<!-- RESULT PAGE -->
+
+<div id="resultsPage" class="hidden">
+
+<div class="bg-white p-4 rounded shadow max-w-md">
+
+<h2 class="text-lg font-semibold mb-3">Declare Result</h2>
+
+<select id="resultCompany" class="border p-2 w-full mb-2">
+
+<option>Meerut City</option>
+<option>Shree Ganesh</option>
+<option>Delhi Bazar</option>
+<option>Faridabad</option>
+<option>Gaziabad</option>
+<option>Gali</option>
+<option>Deshwar</option>
+
+</select>
+
+<input id="resultNumber" placeholder="Result Number"
+class="border p-2 w-full mb-2">
+
+<input id="resultA" placeholder="A Result"
+class="border p-2 w-full mb-2">
+
+<input id="resultB" placeholder="B Result"
+class="border p-2 w-full mb-3">
+
+<button onclick="declareResult()" class="bg-green-600 text-white p-2 w-full rounded">
+Declare Result
+</button>
+
+</div>
+
+</div>
+
+
+<!-- REPORTS -->
+
+<div id="reportsPage" class="hidden">
+<div class="bg-white p-4 rounded shadow">
+Reports coming soon
+</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- CREATE USER MODAL -->
+
+<div id="createUserModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center">
+
+<div class="bg-white p-6 rounded w-80">
+
+<h2 class="text-lg font-semibold mb-4">Create User</h2>
+
+<input id="newName" placeholder="Name" class="border p-2 w-full mb-2">
+<input id="newEmail" placeholder="Email" class="border p-2 w-full mb-2">
+<input id="newPassword" placeholder="Password" class="border p-2 w-full mb-4">
+
+<button onclick="createUser()" class="bg-green-600 text-white p-2 w-full rounded mb-2">
+Create
+</button>
+
+<button onclick="closeCreateUser()" class="bg-gray-400 text-white p-2 w-full rounded">
+Cancel
+</button>
+
+</div>
+
+</div>
+
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+import { getDatabase, ref, onValue, update, push, get, remove }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+import { getAuth, createUserWithEmailAndPassword }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+import { getFirestore, doc, setDoc }
+from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+
+const firebaseConfig={
+apiKey:"AIzaSyCMb2Trmtww1wUVGC9s4ndKd7_M06nIg9Y",
+authDomain:"dk-web-af36a.firebaseapp.com",
+projectId:"dk-web-af36a",
+storageBucket:"dk-web-af36a.appspot.com",
+messagingSenderId:"963722080614",
+appId:"1:963722080614:web:7adcb518ea9a06c33358a7",
+databaseURL:"https://dk-web-af36a-default-rtdb.firebaseio.com"
+}
+
+const app=initializeApp(firebaseConfig)
+
+const db=getDatabase()
+const auth=getAuth()
+const firestore=getFirestore(app)
+
+
+
+/* PAGE SWITCH */
+
+window.showPage=function(page){
+
+["dashboard","users","bets","collection","results","reports"].forEach(p=>{
+document.getElementById(p+"Page").classList.add("hidden")
+})
+
+document.getElementById(page+"Page").classList.remove("hidden")
+
+document.getElementById("pageTitle").innerText=page
+
+}
+
+
+
+/* LOAD USERS */
+
+onValue(ref(db,"users"),(snap)=>{
+
+const data=snap.val()
+
+const table=document.getElementById("usersTable")
+
+table.innerHTML=""
+
+let walletTotal=0
+let userCount=0
+
+for(const uid in data){
+
+const u=data[uid]
+
+walletTotal+=u.wallet||0
+userCount++
+
+table.innerHTML+=`
+<tr class="border-b">
+<td class="p-3">${u.name}</td>
+
+<td class="p-3 text-center">₹${u.wallet||0}</td>
+
+<td class="p-3 text-center">
+<input type="number" min="0" max="100"
+value="${u.commission || 0}"
+onchange="updateCommission('${uid}', this.value)"
+class="border p-1 w-16 text-center rounded">
+</td>
+
+<td class="p-3 text-center flex gap-2 justify-center">
+
+<button onclick="addMoney('${uid}')"
+class="bg-green-600 text-white px-2 py-1 rounded">
+Add
+</button>
+
+<button onclick="deductMoney('${uid}')"
+class="bg-yellow-600 text-white px-2 py-1 rounded">
+Deduct
+</button>
+
+<button onclick="deleteAccount('${uid}')"
+class="bg-red-600 text-white px-2 py-1 rounded">
+Delete
+</button>
+
+</td>
+</tr>
+`
+
+}
+
+document.getElementById("walletTotal").innerText="₹"+walletTotal
+document.getElementById("totalUsers").innerText=userCount
+
+})
+
+
+
+/* CREATE USER */
+
+window.openCreateUser=function(){
+document.getElementById("createUserModal").classList.remove("hidden")
+}
+
+window.closeCreateUser=function(){
+document.getElementById("createUserModal").classList.add("hidden")
+}
+
+window.createUser=async function(){
+
+const name=document.getElementById("newName").value
+const email=document.getElementById("newEmail").value
+const pass=document.getElementById("newPassword").value
+
+const userCred=await createUserWithEmailAndPassword(auth,email,pass)
+
+const uid=userCred.user.uid
+
+update(ref(db,"users/"+uid),{
+name:name,
+email:email,
+wallet:0,
+role:"user"
+})
+
+await setDoc(doc(firestore,"users",uid),{
+email:email,
+role:"user"
+})
+
+alert("User created successfully")
+
+closeCreateUser()
+
+}
+
+
+
+/* DELETE USER */
+
+window.deleteAccount=function(uid){
+
+if(confirm("Delete user?")){
+
+remove(ref(db,"users/"+uid))
+
+alert("User deleted")
+
+}
+
+}
+
+window.addMoney = async function(uid){
+
+const amount = Number(prompt("Enter amount to add"))
+
+if(!amount || amount<=0) return
+
+const snap = await get(ref(db,"users/"+uid+"/wallet"))
+
+const current = snap.val() || 0
+
+const updates = {}
+
+updates["users/"+uid+"/wallet"] = current + amount
+
+updates["wallet_history/"+uid+"/"+Date.now()] = {
+type:"credit",
+amount: amount,
+reason:"Admin added money",
+date: new Date().toISOString().split("T")[0],
+time: new Date().toLocaleTimeString(),
+timestamp: Date.now()
+}
+
+await update(ref(db),updates)
+
+alert("Money added")
+
+}
+
+
+window.deductMoney = async function(uid){
+
+const amount = Number(prompt("Enter amount to deduct"))
+
+if(!amount || amount<=0) return
+
+const snap = await get(ref(db,"users/"+uid+"/wallet"))
+
+const current = snap.val() || 0
+
+if(amount>current){
+alert("User has insufficient wallet")
+return
+}
+
+const updates = {}
+
+updates["users/"+uid+"/wallet"] = current - amount
+
+updates["wallet_history/"+uid+"/"+Date.now()] = {
+type:"debit",
+amount: amount,
+reason:"Admin deducted money",
+date: new Date().toISOString().split("T")[0],
+time: new Date().toLocaleTimeString(),
+timestamp: Date.now()
+}
+
+await update(ref(db),updates)
+
+alert("Money deducted")
+
+}
+
+window.updateCommission = async function(uid, value){
+
+value = Number(value)
+
+if(value < 0 || value > 100){
+alert("Commission must be between 0-100")
+return
+}
+
+await update(ref(db,"users/"+uid),{
+commission: value
+})
+
+alert("Commission updated")
+
+}
+
+/* LIVE BETS */
+
+onValue(ref(db,"bets"), async (snap)=>{
+
+const data = snap.val()
+
+const container = document.getElementById("betsContainer")
+
+container.innerHTML=""
+
+if(!data) return
+
+/* LOAD USER NAMES */
+
+const usersSnap = await get(ref(db,"users"))
+const users = usersSnap.val()
+
+for(const uid in data){
+
+const userName = users[uid]?.name || "Unknown"
+
+container.innerHTML += `
+<div class="border p-3 mb-2 cursor-pointer bg-gray-50 hover:bg-gray-100"
+onclick="openUserBets('${uid}')">
+<b>${userName}</b>
+</div>
+`
+
+}
+
+window.allBetsData = data
+window.allUsersData = users
+
+})
+
+window.openUserBets = function(uid){
+
+const bets = window.allBetsData[uid]
+
+let html=""
+
+for(const date in bets){
+
+html += `<div class="border p-3 mb-3">
+<h3 class="font-bold">${date}</h3>`
+
+for(const company in bets[date]){
+
+html += `<div class="mt-2">
+<b>${company}</b>`
+
+const bet = bets[date][company]
+
+if(bet.numbers){
+for(const n in bet.numbers){
+html += `<div>${n} → ₹${bet.numbers[n]}</div>`
+}
+}
+
+if(bet.A){
+for(const n in bet.A){
+html += `<div>A-${n} → ₹${bet.A[n]}</div>`
+}
+}
+
+if(bet.B){
+for(const n in bet.B){
+html += `<div>B-${n} → ₹${bet.B[n]}</div>`
+}
+}
+
+html += `</div>`
+
+}
+
+html += `</div>`
+
+}
+
+document.getElementById("betsContainer").innerHTML = html
+
+}
+
+
+
+/* COMPANY COLLECTION */
+
+onValue(ref(db,"bets"),(snap)=>{
+
+const data=snap.val()
+
+const container=document.getElementById("collectionContainer")
+
+container.innerHTML=""
+
+if(!data) return
+
+let companyTotals={}
+
+for(const uid in data){
+
+for(const date in data[uid]){
+
+for(const company in data[uid][date]){
+
+if(!companyTotals[company]) companyTotals[company]={}
+
+const bet=data[uid][date][company]
+
+if(bet.numbers){
+
+for(const n in bet.numbers){
+
+if(!companyTotals[company][n])
+companyTotals[company][n]=0
+
+companyTotals[company][n]+=bet.numbers[n]
+
+}
+
+}
+
+}
+
+}
+
+}
+
+/* DISPLAY */
+
+for(const company in companyTotals){
+
+container.innerHTML += `<div class="mb-4">
+<h3 class="font-bold text-lg mb-2">${company}</h3>`
+
+const numbers = Object.entries(companyTotals[company])
+
+numbers.sort((a,b)=>b[1]-a[1])
+
+numbers.forEach(([num,amt])=>{
+
+container.innerHTML += `
+<div class="flex justify-between border-b py-1">
+<span>${num}</span>
+<span>₹${amt}</span>
+</div>
+`
+
+})
+
+container.innerHTML += `</div>`
+
+}
+
+})
+
+
+
+/* DECLARE RESULT */
+
+window.declareResult = async function(){
+
+const company = document.getElementById("resultCompany").value
+const number = document.getElementById("resultNumber").value
+const A = document.getElementById("resultA").value
+const B = document.getElementById("resultB").value
+
+const date = new Date().toISOString().split("T")[0]
+
+/* CHECK IF RESULT ALREADY DECLARED */
+
+const existing = await get(ref(db,"results/"+date+"/"+company))
+
+if(existing.exists()){
+alert("Result already declared for this company today")
+return
+}
+
+/* SAVE RESULT */
+
+await update(ref(db,"results/"+date+"/"+company),{
+number:number,
+A:A,
+B:B
+})
+
+/* FETCH BETS */
+
+const betsSnap = await get(ref(db,"bets"))
+
+if(!betsSnap.exists()){
+alert("Result declared")
+return
+}
+
+const betsData = betsSnap.val()
+
+let updates={}
+
+/* CHECK WINNERS */
+
+for(const uid in betsData){
+
+if(!betsData[uid][date]) continue
+if(!betsData[uid][date][company]) continue
+
+const userBets = betsData[uid][date][company]
+
+let winAmount = 0
+
+/* NUMBER WIN */
+
+if(userBets.numbers && userBets.numbers[number]){
+winAmount += userBets.numbers[number] * 90
+}
+
+/* A WIN */
+
+if(userBets.A && userBets.A[A]){
+winAmount += userBets.A[A] * 9
+}
+
+/* B WIN */
+
+if(userBets.B && userBets.B[B]){
+winAmount += userBets.B[B] * 9
+}
+
+if(winAmount > 0){
+
+const walletSnap = await get(ref(db,"users/"+uid+"/wallet"))
+const currentWallet = walletSnap.val() || 0
+
+updates["users/"+uid+"/wallet"] = currentWallet + winAmount
+
+}
+
+updates[`wallet_history/${uid}/${Date.now()}`] = {
+type:"credit",
+amount: winAmount,
+reason: "Winning - "+company,
+date: date,
+time: new Date().toLocaleTimeString(),
+timestamp: Date.now()
+}
+
+}
+
+
+/* UPDATE ALL WINNERS */
+
+await update(ref(db),updates)
+
+alert("Result declared and winnings distributed")
+
+}
+
+window.updateCommission = async function(uid, value){
+
+value = Number(value)
+
+if(value < 0 || value > 100){
+alert("Commission must be between 0-100")
+return
+}
+
+await update(ref(db,"users/"+uid),{
+commission: value
+})
+
+alert("Commission updated")
+
+}
+
+/* LOGOUT */
+
+window.logout=function(){
+window.location.href="index.html"
+}
+
+</script>
+
+</body>
+</html>

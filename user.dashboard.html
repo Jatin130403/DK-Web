@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>User Dashboard</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+.number{
+width:44px;height:44px;border-radius:8px;border:1px solid #d1d5db;
+display:flex;align-items:center;justify-content:center;
+font-size:14px;cursor:pointer;
+}
+.selected{
+background:#2563eb;color:white;border-color:#2563eb;
+}
+.modal{
+position:fixed;top:0;left:0;width:100%;height:100%;
+background:rgba(0,0,0,0.5);display:none;
+align-items:center;justify-content:center;padding:10px;
+}
+</style>
+</head>
+
+<body class="bg-gray-100 p-4">
+
+<div class="flex justify-between mb-4 items-center">
+
+<h1 class="text-xl font-bold">Game Dashboard</h1>
+
+<div class="flex gap-3 items-center">
+
+<div onclick="openWalletHistory()" 
+class="bg-green-100 px-3 py-1 rounded font-semibold cursor-pointer hover:bg-green-200">
+Wallet ₹<span id="walletBalance">0</span>
+</div>
+
+<button onclick="openHistory()" class="bg-blue-600 text-white px-3 py-1 rounded">
+History
+</button>
+
+<button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded">
+Logout
+</button>
+
+</div>
+
+</div>
+
+<div id="companies" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+
+<!-- GAME MODAL -->
+
+<div id="gameModal" class="modal">
+<div class="bg-white p-4 rounded-lg w-full max-w-md max-h-[90vh] overflow-auto">
+
+<h2 id="companyTitle" class="text-lg font-bold mb-3"></h2>
+
+<h3 class="text-sm font-semibold mb-1">Numbers</h3>
+<div id="numbersGrid" class="grid grid-cols-10 gap-1 mb-4"></div>
+
+<h3 class="text-sm font-semibold mb-1">A</h3>
+<div id="aGrid" class="grid grid-cols-9 gap-1 mb-4"></div>
+
+<h3 class="text-sm font-semibold mb-1">B</h3>
+<div id="bGrid" class="grid grid-cols-9 gap-1 mb-4"></div>
+
+<div class="bg-gray-100 p-3 rounded">
+
+<h3 class="text-sm font-semibold mb-1">Selected Bets</h3>
+
+<div id="liveBets"></div>
+
+<p class="text-sm mt-2">
+Total ₹<span id="liveTotal">0</span>
+</p>
+
+</div>
+
+<div class="flex gap-2 mt-4">
+<button onclick="nextStep()" class="bg-blue-600 text-white px-4 py-2 rounded w-full">Next</button>
+<button onclick="resetSelection()" class="bg-gray-400 text-white px-4 py-2 rounded w-full">Cancel</button>
+</div>
+
+</div>
+</div>
+
+<!-- AMOUNT POPUP -->
+
+<div id="amountPopup" class="modal">
+<div class="bg-white p-4 rounded-lg w-72">
+
+<h3 id="betLabel" class="font-bold mb-2"></h3>
+
+<input id="betAmountInput" type="number" placeholder="Enter amount (5-500)"
+class="border p-2 w-full mb-2">
+
+<p id="betError" class="text-red-500 text-xs hidden">
+Amount must be ₹5-₹500
+</p>
+
+<div class="flex gap-2">
+<button onclick="saveSingleBet()" class="bg-green-600 text-white px-3 py-1 rounded w-full">OK</button>
+<button onclick="closePopup()" class="bg-gray-400 text-white px-3 py-1 rounded w-full">Cancel</button>
+</div>
+
+</div>
+</div>
+
+<!-- SUMMARY -->
+
+<div id="summaryModal" class="modal">
+<div class="bg-white p-4 rounded-lg w-full max-w-md">
+
+<h2 class="text-lg font-bold mb-2">Bet Summary</h2>
+
+<p>Numbers: <span id="totalNumbers">0</span></p>
+<p>Total Amount: ₹<span id="totalAmount">0</span></p>
+
+<div id="summaryList" class="mt-3"></div>
+
+<div class="flex gap-2 mt-4">
+<button onclick="confirmSave()" class="bg-green-600 text-white px-4 py-2 rounded w-full">Save</button>
+<button onclick="closeSummary()" class="bg-gray-400 text-white px-4 py-2 rounded w-full">Cancel</button>
+</div>
+
+</div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyCMb2Trmtww1wUVGC9s4ndKd7_M06nIg9Y",
+authDomain:"dk-web-af36a.firebaseapp.com",
+projectId:"dk-web-af36a",
+storageBucket:"dk-web-af36a.appspot.com",
+messagingSenderId:"963722080614",
+appId:"1:963722080614:web:7adcb518ea9a06c33358a7",
+databaseURL:"https://dk-web-af36a-default-rtdb.firebaseio.com"
+}
+
+const app=initializeApp(firebaseConfig)
+const auth=getAuth()
+const db=getDatabase()
+
+let userWallet=0
+
+onAuthStateChanged(auth,user=>{
+if(!user) return
+
+onValue(ref(db,"users/"+user.uid),(snap)=>{
+
+const data=snap.val()
+if(!data) return
+
+userWallet=data.wallet || 0
+document.getElementById("walletBalance").innerText=userWallet
+
+})
+
+})
+
+window.logout=function(){
+signOut(auth).then(()=>location.href="index.html")
+}
+
+window.openHistory=function(){
+location.href="history.html"
+}
+
+const companies=[
+{name:"Meerut City",id:"Meerut City",draw:"14:30",open:"11:00"},
+{name:"Shree Ganesh",id:"Shree Ganesh",draw:"16:05",open:"11:00"},
+{name:"Delhi Bazar",id:"Delhi Bazar",draw:"14:30",open:"11:00"},
+{name:"Faridabad",id:"Faridabad",draw:"17:30",open:"11:00"},
+{name:"Gaziabad",id:"Gaziabad",draw:"20:30",open:"11:00"},
+{name:"Gali",id:"Gali",draw:"22:30",open:"11:00"},
+{name:"Deshwar",id:"Deshwar",draw:"01:00",open:"11:00"}
+]
+
+const container=document.getElementById("companies")
+
+companies.forEach(c=>{
+
+const card=document.createElement("div")
+
+card.className="bg-white p-3 rounded shadow"
+
+card.innerHTML=`
+<h2 class="font-semibold">${c.name}</h2>
+<p id="timer-${c.id}" class="text-sm text-gray-600"></p>
+<button id="play-${c.id}" class="bg-blue-600 text-white px-3 py-1 rounded mt-2 w-full">
+Play
+</button>
+`
+
+container.appendChild(card)
+
+document.getElementById(`play-${c.id}`).onclick=()=>openGame(c.id)
+
+})
+
+function updateTimers(){
+
+const now=new Date()
+
+companies.forEach(c=>{
+
+const [dh,dm]=c.draw.split(":").map(Number)
+const [oh,om]=c.open.split(":").map(Number)
+
+let draw=new Date()
+draw.setHours(dh,dm,0,0)
+
+let open=new Date()
+open.setHours(oh,om,0,0)
+
+if(draw<open) draw.setDate(draw.getDate()+1)
+
+const timer=document.getElementById(`timer-${c.id}`)
+const btn=document.getElementById(`play-${c.id}`)
+const card=btn.parentElement
+
+if(now>=open && now<draw){
+
+const diff=draw-now
+
+const hours=Math.floor(diff/3600000)
+const minutes=Math.floor((diff%3600000)/60000)
+const seconds=Math.floor((diff%60000)/1000)
+
+timer.innerText=`Closes in ${hours}h ${minutes}m ${seconds}s`
+
+btn.disabled=false
+card.classList.remove("bg-white")
+card.classList.add("bg-green-100")
+
+}else{
+
+timer.innerText="Closed"
+btn.disabled=true
+
+card.classList.remove("bg-green-100")
+card.classList.add("bg-white")
+
+}
+
+})
+
+}
+
+setInterval(updateTimers,1000)
+updateTimers()
+
+let currentCompany=""
+let bets={}
+let betsA={}
+let betsB={}
+let currentSelection=null
+let selectionType=""
+
+window.openGame=function(company){
+
+currentCompany=company
+document.getElementById("companyTitle").innerText=company
+document.getElementById("gameModal").style.display="flex"
+
+}
+
+function createCell(val,type){
+
+const div=document.createElement("div")
+div.className="number"
+div.innerText=val
+div.dataset.type=type
+div.dataset.value=val
+div.onclick=()=>openAmountPopup(val,type)
+
+return div
+
+}
+
+const grid=document.getElementById("numbersGrid")
+for(let i=1;i<=100;i++) grid.appendChild(createCell(i,"number"))
+
+const aGrid=document.getElementById("aGrid")
+for(let i=1;i<=9;i++) aGrid.appendChild(createCell(i,"A"))
+
+const bGrid=document.getElementById("bGrid")
+for(let i=1;i<=9;i++) bGrid.appendChild(createCell(i,"B"))
+
+function openAmountPopup(val,type){
+
+currentSelection=val
+selectionType=type
+
+let existing=null
+if(type==="number") existing=bets[val]
+if(type==="A") existing=betsA[val]
+if(type==="B") existing=betsB[val]
+
+document.getElementById("betAmountInput").value=existing || ""
+
+document.getElementById("betLabel").innerText=
+type==="number" ? "Number "+val :
+type==="A" ? "A-"+val : "B-"+val
+
+document.getElementById("amountPopup").style.display="flex"
+
+}
+
+window.closePopup=function(){
+document.getElementById("amountPopup").style.display="none"
+}
+
+window.saveSingleBet=function(){
+
+let amount=Number(document.getElementById("betAmountInput").value)
+
+if(amount<5 || amount>500){
+document.getElementById("betError").classList.remove("hidden")
+return
+}
+
+if(selectionType==="number") bets[currentSelection]=amount
+if(selectionType==="A") betsA[currentSelection]=amount
+if(selectionType==="B") betsB[currentSelection]=amount
+
+highlightSelections()
+updateLivePanel()
+
+closePopup()
+
+}
+
+function highlightSelections(){
+
+document.querySelectorAll(".number").forEach(el=>{
+
+const val=Number(el.dataset.value)
+const type=el.dataset.type
+
+if(
+(type==="number" && bets[val]) ||
+(type==="A" && betsA[val]) ||
+(type==="B" && betsB[val])
+){
+el.classList.add("selected")
+}else{
+el.classList.remove("selected")
+}
+
+})
+
+}
+
+function updateLivePanel(){
+
+const panel=document.getElementById("liveBets")
+panel.innerHTML=""
+
+let total=0
+
+for(let n in bets){
+panel.innerHTML+=`<div>${n} → ₹${bets[n]}</div>`
+total+=bets[n]
+}
+
+for(let n in betsA){
+panel.innerHTML+=`<div>A-${n} → ₹${betsA[n]}</div>`
+total+=betsA[n]
+}
+
+for(let n in betsB){
+panel.innerHTML+=`<div>B-${n} → ₹${betsB[n]}</div>`
+total+=betsB[n]
+}
+
+document.getElementById("liveTotal").innerText=total
+
+}
+
+window.nextStep=function(){
+
+const list=document.getElementById("summaryList")
+list.innerHTML=""
+
+let total=0
+let count=0
+
+for(let n in bets){
+list.innerHTML+=`<div>${n} - ₹${bets[n]}</div>`
+total+=bets[n]; count++
+}
+
+for(let n in betsA){
+list.innerHTML+=`<div>A ${n} - ₹${betsA[n]}</div>`
+total+=betsA[n]; count++
+}
+
+for(let n in betsB){
+list.innerHTML+=`<div>B ${n} - ₹${betsB[n]}</div>`
+total+=betsB[n]; count++
+}
+
+document.getElementById("totalNumbers").innerText=count
+document.getElementById("totalAmount").innerText=total
+
+document.getElementById("gameModal").style.display="none"
+document.getElementById("summaryModal").style.display="flex"
+
+}
+
+window.confirmSave = async function(){
+
+const uid = auth.currentUser.uid
+
+const today = new Date()
+const dateKey = today.toISOString().split("T")[0]
+
+let updates = {}
+let totalBet = 0
+
+for(let n in bets){
+updates[`bets/${uid}/${dateKey}/${currentCompany}/numbers/${n}`] = bets[n]
+totalBet += bets[n]
+}
+
+for(let n in betsA){
+updates[`bets/${uid}/${dateKey}/${currentCompany}/A/${n}`] = betsA[n]
+totalBet += betsA[n]
+}
+
+for(let n in betsB){
+updates[`bets/${uid}/${dateKey}/${currentCompany}/B/${n}`] = betsB[n]
+totalBet += betsB[n]
+}
+
+if(totalBet > userWallet){
+alert("Insufficient wallet balance")
+return
+}
+
+/* GET USER DATA FOR COMMISSION */
+const userSnap = await get(ref(db,"users/"+uid))
+const userData = userSnap.val()
+
+const commissionPercent = userData?.commission || 0
+const commissionAmount = (totalBet * commissionPercent) / 100
+
+/* FINAL WALLET CALCULATION */
+const finalWallet = userWallet - totalBet + commissionAmount
+
+/* SAVE WALLET */
+updates[`users/${uid}/wallet`] = finalWallet
+
+/* SAVE BET HISTORY (DEBIT) */
+updates[`wallet_history/${uid}/${Date.now()}`] = {
+type:"debit",
+amount: totalBet,
+reason: "Bet placed - "+currentCompany,
+date: dateKey,
+time: new Date().toLocaleTimeString(),
+timestamp: Date.now()
+}
+
+/* SAVE COMMISSION (CREDIT) */
+if(commissionAmount > 0){
+updates[`wallet_history/${uid}/${Date.now()+1}`] = {
+type:"credit",
+amount: commissionAmount,
+reason: "Commission",
+date: dateKey,
+time: new Date().toLocaleTimeString(),
+timestamp: Date.now()+1
+}
+}
+
+/* UPDATE FIREBASE */
+await update(ref(db),updates)
+
+alert("Bet Saved Successfully")
+
+closeSummary()
+
+}
+
+window.resetSelection=function(){
+
+bets={}
+betsA={}
+betsB={}
+
+updateLivePanel()
+
+document.querySelectorAll(".number").forEach(el=>{
+el.classList.remove("selected")
+})
+
+document.getElementById("gameModal").style.display="none"
+
+}
+
+window.closeSummary=function(){
+
+document.getElementById("summaryModal").style.display="none"
+resetSelection()
+
+}
+
+window.openWalletHistory=function(){
+location.href="wallet_history.html"
+}
+
+</script>
+
+</body>
+</html>
