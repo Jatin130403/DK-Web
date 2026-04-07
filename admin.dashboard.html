@@ -11,11 +11,11 @@
 
 <body class="bg-gray-100">
 
-<div class="flex h-screen">
+<div class="flex min-h-screen">
 
 <!-- SIDEBAR -->
 
-<div class="w-64 bg-gray-900 text-white flex flex-col">
+<div id="sidebar" class="fixed md:static z-50 w-64 bg-gray-900 text-white flex flex-col h-full transform -translate-x-full md:translate-x-0 transition-transform duration-300">
 
 <div class="p-4 text-xl font-bold border-b border-gray-700">
 Admin Panel
@@ -38,9 +38,24 @@ Logout
 
 <div class="flex-1 flex flex-col">
 
-<div class="bg-white shadow p-4">
+<div class="bg-white shadow p-4 flex items-center gap-3">
+
+<button onclick="toggleSidebar()" 
+class="md:hidden text-2xl font-bold">
+☰
+</button>
+
 <h1 id="pageTitle" class="text-xl font-semibold">Dashboard</h1>
+
 </div>
+
+<div id="overlay" onclick="closeSidebar()" 
+class="fixed inset-0 bg-black bg-opacity-40 hidden z-40 md:hidden"></div>
+
+window.closeSidebar = function(){
+document.getElementById("sidebar").classList.add("-translate-x-full")
+document.getElementById("overlay").classList.add("hidden")
+}
 
 <div class="p-6 overflow-auto flex-1">
 
@@ -217,7 +232,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getDatabase, ref, onValue, update, push, get, remove }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-import { getAuth, createUserWithEmailAndPassword }
+import { getAuth, createUserWithEmailAndPassword, signOut }
 from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 import { getFirestore, doc, setDoc }
@@ -251,10 +266,16 @@ document.getElementById(p+"Page").classList.add("hidden")
 })
 
 document.getElementById(page+"Page").classList.remove("hidden")
-
 document.getElementById("pageTitle").innerText=page
 
+/* AUTO CLOSE SIDEBAR ON MOBILE */
+if(window.innerWidth < 768){
+document.getElementById("sidebar").classList.add("-translate-x-full")
+document.getElementById("overlay").classList.add("hidden")
 }
+
+}
+
 
 
 
@@ -730,10 +751,45 @@ alert("Commission updated")
 
 }
 
-/* LOGOUT */
 
-window.logout=function(){
-window.location.href="index.html"
+/* SIDEBAR TOGGLE FUNCTION (PASTE HERE) */
+window.toggleSidebar = function(){
+
+const sidebar = document.getElementById("sidebar")
+const overlay = document.getElementById("overlay")
+
+const isHidden = sidebar.classList.contains("-translate-x-full")
+
+if(isHidden){
+sidebar.classList.remove("-translate-x-full")
+overlay.classList.remove("hidden")
+}else{
+sidebar.classList.add("-translate-x-full")
+overlay.classList.add("hidden")
+}
+
+}
+
+window.logout = async function(){
+
+const confirmLogout = confirm("Are you sure you want to logout?")
+
+if(!confirmLogout) return
+
+try{
+
+await auth.signOut()
+
+alert("Logged out successfully")
+
+window.location.href = "index.html"
+
+}catch(err){
+
+alert("Logout failed: " + err.message)
+
+}
+
 }
 
 </script>

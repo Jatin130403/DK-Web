@@ -128,6 +128,28 @@ Amount must be ₹5-₹500
 </div>
 </div>
 
+<!-- LOGOUT MODAL -->
+
+<div id="logoutModal" class="modal">
+<div class="bg-white p-4 rounded-lg w-80 text-center">
+
+<h2 class="text-lg font-bold mb-3">Confirm Logout</h2>
+
+<p class="mb-4 text-gray-600">Are you sure you want to logout?</p>
+
+<div class="flex gap-2">
+<button onclick="confirmLogout()" class="bg-red-600 text-white px-4 py-2 rounded w-full">
+Logout
+</button>
+
+<button onclick="closeLogout()" class="bg-gray-400 text-white px-4 py-2 rounded w-full">
+Cancel
+</button>
+</div>
+
+</div>
+</div>
+
 <script type="module">
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -165,8 +187,20 @@ document.getElementById("walletBalance").innerText=userWallet
 
 })
 
-window.logout=function(){
-signOut(auth).then(()=>location.href="index.html")
+window.logout = function(){
+document.getElementById("logoutModal").style.display = "flex"
+}
+
+window.closeLogout = function(){
+document.getElementById("logoutModal").style.display = "none"
+}
+
+window.confirmLogout = async function(){
+
+await signOut(auth)
+
+window.location.href = "index.html"
+
 }
 
 window.openHistory=function(){
